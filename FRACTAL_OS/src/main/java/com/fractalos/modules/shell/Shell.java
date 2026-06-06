@@ -95,12 +95,25 @@ public class Shell {
     }
 
     private String procesarTexto(String linea) {
-        // Tu lógica de comandos (ls, cd, etc.)
-        if(linea.trim().equalsIgnoreCase("clear")) {
-            // Nota: Si limpian la pantalla, el comportamiento cambia un poco
-            areaTrabajo.setText("");
-            return "";
+        String[] tokens = linea.trim().split("\\s+");
+
+        String comandoPrincipal = tokens[0].toLowerCase();
+        switch (comandoPrincipal){
+            case "ayuda":
+                return "clear: Limpiar pantalla \nls: Mostrar directorio \ncd: Moverse al directorio";
+                
+            case "clear":
+                areaTrabajo.setText("");
+                return "";
+                
+            case "ls":
+                return "Mostrando directorio";
+                
+            case "cd":
+                return "Moviendo al directorio";
+                
+            default:
+                return "Error: El comando '" + comandoPrincipal + "' no existe. usa comando [ayuda]";
         }
-        return "Comando recibido: " + linea; 
     }
 }
