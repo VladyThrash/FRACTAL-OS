@@ -21,6 +21,10 @@ public class Process  implements Runnable, Comparable<Process>{
     private STATE actualState; //Estado actual del proceso
     private final int priority; //Nivel de prioridad en el planificador - despachador.
     private int remProcessing; //Tiempo de procesamiento restante del proceso para finalizar (ramaining processing).
+    private long arrivalTime; //Cuando el proceso nace y entra al sistema.
+    private long firstEjecutionTime = -1; //-1 indica que aún no ha tocado la CPU.
+    private long lastReadyTime; //Marca de tiempo de cuándo entró a la cola por última vez.
+    private long waitAccumulatedTime = 0; //Sumatoria del tiempo que pasa esperando.
 
     //Constructures
     public Process(int pid, int priority, int remProcessing){ //Para un proceso con prioridad definida.
@@ -28,6 +32,9 @@ public class Process  implements Runnable, Comparable<Process>{
         this.actualState = STATE.NEW_PROCESS;
         this.priority = priority;
         this.remProcessing = remProcessing;
+        long tiempoActual = System.currentTimeMillis();
+        this.arrivalTime = tiempoActual;
+        this.lastReadyTime = tiempoActual;
     }
 
     public Process(int pid, int remProcessing){ //Para un proceso con una prioridad default.
@@ -35,6 +42,9 @@ public class Process  implements Runnable, Comparable<Process>{
         this.actualState = STATE.NEW_PROCESS;
         this.priority = 0; //Prioridad 0, termina en orden FIFO.
         this.remProcessing = remProcessing;
+        long tiempoActual = System.currentTimeMillis();
+        this.arrivalTime = tiempoActual;
+        this.lastReadyTime = tiempoActual;
     }
 
     //Getters y Setters
@@ -62,7 +72,39 @@ public class Process  implements Runnable, Comparable<Process>{
         this.remProcessing = remProcessing;
     }
 
-    //Sobreecribimos el método de la interfaz funcional Runnable.
+    public long getArrivalTime() {
+        return arrivalTime; //Obtener el tiempo en el que el proceso ingreso a la cola de prioridad.
+    }
+
+    public void setArrivalTime(long arrivalTime) {
+        this.arrivalTime = arrivalTime; //Definir el tiempo en el que el proceso ingreso a la cola de prioridad.
+    }
+
+    public long getFirstEjecutionTime() {
+        return firstEjecutionTime; //Obtener el tiempo en el que el proceso fue atendido por primera vez.
+    }
+
+    public void setFirstEjecutionTime(long firstEjecutionTime) {
+        this.firstEjecutionTime = firstEjecutionTime; //Definir el tiempo en el que el proceso fue atendido por primera vez.
+    }
+
+    public long getLastReadyTime() {
+        return lastReadyTime; //Obtener el tiempo en el que el proceso salío por última vez del despachador.
+    }
+
+    public void setLastReadyTime(long lastReadyTime) {
+        this.lastReadyTime = lastReadyTime; //Definir el tiempo en el que el proceso salío por última vez del despachador.
+    }
+
+    public long getWaitAccumulatedTime() {
+        return waitAccumulatedTime; //Obtener el acumulado de tiempo que el proceso pasa esperando ser atendido.
+    }
+
+    public void setWaitAccumulatedTime(long waitAccumulatedTime) {
+        this.waitAccumulatedTime = waitAccumulatedTime; //Definir el acumulado de tiempo que el proceso pasa esperando ser atendido.
+    }
+
+    //Sobré escribimos el método de la interfaz funcional Runnable.
     @Override
     public void run() {
         this.setActualState(STATE.RUNNING_PROCESS);
@@ -87,7 +129,7 @@ public class Process  implements Runnable, Comparable<Process>{
         System.out.println("Proceso PID: " + this.pid + " finalizó su ráfaga.");
     }
 
-    //Sobreescribimos el método de la clase funcional Comparable.
+    //Sobré escribimos el método de la clase funcional Comparable.
     @Override
     public int compareTo(Process otherProcess) {
         // Ordena de mayor a menor prioridad
