@@ -15,6 +15,7 @@ public class Shell {
     private JTextArea areaTrabajo;
     private String rutaActual = "user@minios:~$ ";
     private int posicionEntradaUsuario = 0; 
+    
 
     public Shell() {
         ventana = new JFrame("FracShell");
@@ -78,7 +79,6 @@ public class Shell {
     }
 
     private void ejecutarComando(String linea) {
-        // Añadimos un salto de línea manual ya que consumimos el ENTER original
         areaTrabajo.append("\n"); 
 
         if (!linea.trim().isEmpty()) {
@@ -86,10 +86,7 @@ public class Shell {
             areaTrabajo.append(respuesta + "\n");
         }
 
-        // Volvemos a pintar el rutaActual para el siguiente comando
         areaTrabajo.append(rutaActual);
-        
-        // Actualizamos la posición para bloquear que borren el nuevo rutaActual
         areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
         posicionEntradaUsuario = areaTrabajo.getText().length();
     }
@@ -121,7 +118,12 @@ public class Shell {
     }
     private String ayudaInfo(String[] tokens){
         if (tokens.length == 1){
-            return "ayuda [comando] \nclear: Limpiar pantalla \nls: Mostrar directorio \ncd: Moverse al directorio \nconfs: Configuracion de terminal";
+            return """
+                ayuda -comando
+                clear: Limpiar pantalla 
+                ls: Mostrar directorio 
+                cd: Moverse al directorio 
+                confs: Configuracion de terminal""";
         }
 
         switch (tokens[1]) {
@@ -133,7 +135,7 @@ public class Shell {
                 
             case "confs":
                 return """
-                    confs -s [tamaño] ->Cambia tamaño de fuente
+                    confs -s -numero [tamaño] ->Cambia tamaño de fuente
                     confs -c -color [verde|blanco|azul|rojo] -> Cambia color de la fuente""";
             default:
                 return "Comando desconocido";
@@ -159,7 +161,7 @@ public class Shell {
                 }catch(NumberFormatException e){
                     return "Error: '"+tokens[2]+"' No es numero valido";
                 }
-                return "Tamaño de '"+ tokens[2] + "'' Establecido";
+                return "Tamaño de '"+ tokens[2] + "' Establecido";
             case "-c":
                 if (tokens.length < 3) {
                     return "Error: Especifica un color. Opciones: verde, blanco, azul, rojo";
@@ -180,7 +182,7 @@ public class Shell {
                         areaTrabajo.setForeground(Color.RED);
                         return "Color de fuente cambiado a Rojo.";
                     default:
-                        return "Error: Color no reconocido. Intenta con verde, blanco, azul o rojo.";
+                        return "Error: Color no reconocido. verde, blanco, azul o rojo.";
                 }
             default:
                 return "Error: Parámetro '" + bandera + "' no válido. Usa 'ayuda confs'.";
