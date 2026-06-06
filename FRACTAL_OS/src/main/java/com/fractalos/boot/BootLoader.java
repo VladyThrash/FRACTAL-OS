@@ -16,6 +16,6 @@ public class BootLoader {
                 Shell miterminal = new Shell();
                 miterminal.mostrar();
             }
-        });
+        } );
     }
 }
