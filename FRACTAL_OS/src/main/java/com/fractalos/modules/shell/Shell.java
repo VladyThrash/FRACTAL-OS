@@ -13,7 +13,7 @@ import javax.swing.JTextArea;
 public class Shell {
     private JFrame ventana;
     private JTextArea areaTrabajo;
-    private final String PROMPT = "user@minios:~$ ";
+    private String rutaActual = "user@minios:~$ ";
     private int posicionEntradaUsuario = 0; 
 
     public Shell() {
@@ -29,9 +29,9 @@ public class Shell {
         areaTrabajo.setCaretColor(Color.WHITE);
         areaTrabajo.setFont(new Font("Consolas", Font.PLAIN, 14));
         
-        // Iniciamos la terminal con el primer prompt impreso
-        areaTrabajo.setText(PROMPT);
-        // Colocamos el cursor al final del prompt
+        // Iniciamos la terminal con el primer rutaActual impreso
+        areaTrabajo.setText(rutaActual);
+        // Colocamos el cursor al final del rutaActual
         areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
         posicionEntradaUsuario = areaTrabajo.getText().length();
 
@@ -86,10 +86,10 @@ public class Shell {
             areaTrabajo.append(respuesta + "\n");
         }
 
-        // Volvemos a pintar el prompt para el siguiente comando
-        areaTrabajo.append(PROMPT);
+        // Volvemos a pintar el rutaActual para el siguiente comando
+        areaTrabajo.append(rutaActual);
         
-        // Actualizamos la posición para bloquear que borren el nuevo prompt
+        // Actualizamos la posición para bloquear que borren el nuevo rutaActual
         areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
         posicionEntradaUsuario = areaTrabajo.getText().length();
     }
@@ -98,11 +98,12 @@ public class Shell {
         String[] tokens = linea.trim().split("\\s+");
 
         String comandoPrincipal = tokens[0].toLowerCase();
-        switch (comandoPrincipal){
+        switch(comandoPrincipal){
             case "ayuda":
-                return "clear: Limpiar pantalla \nls: Mostrar directorio \ncd: Moverse al directorio";
+                return ayudaInfo(tokens);
                 
             case "clear":
+            case "clr":
                 areaTrabajo.setText("");
                 return "";
                 
@@ -110,10 +111,86 @@ public class Shell {
                 return "Mostrando directorio";
                 
             case "cd":
-                return "Moviendo al directorio";
+                return obtenerRutaActual(tokens);
                 
+            case "confs":
+                return configuracionShell(tokens);
             default:
                 return "Error: El comando '" + comandoPrincipal + "' no existe. usa comando [ayuda]";
         }
+    }
+    private String ayudaInfo(String[] tokens){
+        if (tokens.length == 1){
+            return "ayuda [comando] \nclear: Limpiar pantalla \nls: Mostrar directorio \ncd: Moverse al directorio \nconfs: Configuracion de terminal";
+        }
+
+        switch (tokens[1]) {
+            case "ayuda":
+                return "ayuda [comando]";
+                
+            case "cd":
+                return "cd [directorio] -> Mueve terminal al directorio seleccionado";
+                
+            case "confs":
+                return """
+                    confs -s [tamaño] ->Cambia tamaño de fuente
+                    confs -c -color [verde|blanco|azul|rojo] -> Cambia color de la fuente""";
+            default:
+                return "Comando desconocido";
+        }
+    }
+    private String configuracionShell(String[] tokens){
+        if(tokens.length < 2){
+            return "Error: Faltan argumentos consula 'ayuda conf'";
+        }
+        String bandera = tokens[1].toLowerCase();
+        
+        switch(bandera){
+            case "-s":
+                if(tokens.length <3 ){ return "Error: Debes especificar un tamaño numérico. Ej: confs -fs 16";}
+                try{
+                    int nuevoTam = Integer.parseInt(tokens[2]);
+                    if(nuevoTam < 10 || nuevoTam > 40){
+                        return "Error: El tamaño debe ser entre 10 y 40";
+                    }
+
+                    Font fuenteActual = areaTrabajo.getFont();
+                    areaTrabajo.setFont(new Font(fuenteActual.getName(), fuenteActual.getStyle(),nuevoTam));
+                }catch(NumberFormatException e){
+                    return "Error: '"+tokens[2]+"' No es numero valido";
+                }
+                return "Tamaño de '"+ tokens[2] + "'' Establecido";
+            case "-c":
+                if (tokens.length < 3) {
+                    return "Error: Especifica un color. Opciones: verde, blanco, azul, rojo";
+                }
+                String colorSelec = tokens[2].toLowerCase();
+
+                switch (colorSelec) {
+                    case "verde":
+                        areaTrabajo.setForeground(Color.GREEN);
+                        return "Color de fuente cambiado a Verde.";
+                    case "blanco":
+                        areaTrabajo.setForeground(Color.WHITE);
+                        return "Color de fuente cambiado a Blanco.";
+                    case "azul":
+                        areaTrabajo.setForeground(new Color(50, 150, 255)); // Azul brillante más legible
+                        return "Color de fuente cambiado a Azul.";
+                    case "rojo":
+                        areaTrabajo.setForeground(Color.RED);
+                        return "Color de fuente cambiado a Rojo.";
+                    default:
+                        return "Error: Color no reconocido. Intenta con verde, blanco, azul o rojo.";
+                }
+            default:
+                return "Error: Parámetro '" + bandera + "' no válido. Usa 'ayuda confs'.";
+        }
+    }
+
+    private String obtenerRutaActual(String[] tokens){
+        //String rutaActual = gestorArchivos.getRuta();
+        //return usuario + rutaActual +"$ ";
+        rutaActual = tokens[1] + ":~$ ";
+        return "moviendo al directorio: " + tokens[1];
     }
 }
