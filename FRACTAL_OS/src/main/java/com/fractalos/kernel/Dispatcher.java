@@ -4,6 +4,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import com.fractalos.ipc.SystemMessage;
+import com.fractalos.ipc.IPCBus;
 
 //Para el despachador se utiliza el paquete java.util.concurrent.
 //Un ExecutorService nos permite simular exactamente un procesador con (n) cantidad de núcleos.
@@ -65,7 +67,16 @@ public class Dispatcher {
     //Método estático: Ejecuta la limpieza cuando un proceso termina su código de manera natural.
     public static void endProcess(Process p) {
         p.setActualState(Process.STATE.FINISHED_PROCESS);
-        //Notificar mediante IPC liberación de memoria (Implementación a futuro).
+
+        //Notificar mediante IPC liberación de memoria.
+        SystemMessage msg = new SystemMessage(
+                SystemMessage.Topic.PROCESS_TERMINATED,
+                0,          //sourcePid: 0 indica que el remitente es el Kernel.
+                p.getPid(),          //targetPid: El proceso que acaba de morir.
+                null                 //payload: No necesitamos enviar datos extra en este caso.
+        );
+        IPCBus.sendMessageToMemory(msg);
+
         Dispatcher.activeProcesses.remove(p.getPid());
     }
 
@@ -73,5 +84,7 @@ public class Dispatcher {
     public static void shutDown() {
         cpuPool.shutdownNow();
         Dispatcher.activeProcesses.clear();
+        Scheduler.clearAllProcesses();
+        IPCBus.clearComunicationBus();
     }
 }
