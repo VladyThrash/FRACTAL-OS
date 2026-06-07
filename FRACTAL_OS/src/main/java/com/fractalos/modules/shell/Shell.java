@@ -140,15 +140,25 @@ public class Shell implements IPCModule, Runnable{
 
             case "kill":
                 if (tokens.length < 2) {
-                    return "Error: Falta el PID. Uso: kill [PID]";
+                    return "Error: Falta el PID. Uso: kill [pid]";
                 }
-                // Empaquetamos la orden enviando los tokens como payload
                 SystemMessage peticionKill = new SystemMessage(
                         SystemMessage.Topic.PROCESS_KILL_REQUEST,
                         0, 0, tokens
                 );
                 IPCBus.sendMessageToKernel(peticionKill);
-                return "Enviando señal SIGKILL al proceso " + tokens[1] + "...";
+                return "Enviando señal KILL al proceso " + tokens[1] + "...";
+
+            case "renice":
+                if (tokens.length < 3) {
+                    return "Error: Faltan argumentos. Uso: renice [pid] [priority]";
+                }
+                SystemMessage peticionRenice = new SystemMessage(
+                        SystemMessage.Topic.PROCESS_PRIORITY_CHANGE_REQUEST,
+                        0, 0, tokens
+                );
+                IPCBus.sendMessageToKernel(peticionRenice);
+                return "Solicitando cambio de prioridad para el PID " + tokens[1] + "...";
 
             case "ayuda":
                 return ayudaInfo(tokens);

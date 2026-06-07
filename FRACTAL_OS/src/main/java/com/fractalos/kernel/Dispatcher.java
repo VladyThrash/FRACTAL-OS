@@ -45,7 +45,7 @@ public class Dispatcher {
 
     //Método estático: Guarda el estado cuando un proceso sale de la CPU antes de terminar.
     public static void saveContext(Process p) {
-        p.setActualState(Process.STATE.READY_PROCESS);
+        p.setActualState(Process.STATE.STANDBY_PROCESS);
         p.setLastReadyTime(System.currentTimeMillis());
     }
 
@@ -79,6 +79,7 @@ public class Dispatcher {
         IPCBus.sendMessageToShell(msg);
         Dispatcher.activeProcesses.remove(p.getPid());
         KernelDaemon.GPT.remove(p.getPid()); //Removemos de la Tabla Global de Procesos.
+        KernelDaemon.evaluateExpropriation(); //Evaluamos la prioridad de los procesos.
     }
 
     //Método estático: Mata un proceso forzosamente si se encuentra en ejecución.
@@ -92,6 +93,11 @@ public class Dispatcher {
             return true; //El proceso fue aniquilado con éxito en la CPU.
         }
         return false; //El proceso no estaba en la CPU.
+    }
+
+    //Método estático: Retorna los PIDs de los procesos que están ocupando un núcleo.
+    public static java.util.Set<Integer> getActivePids() {
+        return activeProcesses.keySet();
     }
 
    //Método estático: Detiene el Executor Service y limpia el mapa de procesos activos.

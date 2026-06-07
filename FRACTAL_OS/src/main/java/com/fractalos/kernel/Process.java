@@ -10,7 +10,6 @@ public class Process  implements Runnable, Comparable<Process>{
     //Posibles estados en los que se puede encontrar un proceso.
     public enum STATE{
         NEW_PROCESS, //Nuevo
-        READY_PROCESS, //Listo
         RUNNING_PROCESS, //En ejecución
         STANDBY_PROCESS, //En espera
         FINISHED_PROCESS //Terminado
@@ -19,7 +18,7 @@ public class Process  implements Runnable, Comparable<Process>{
     //Atributos de la clase
     private final int pid;  //Process ID.
     private STATE actualState; //Estado actual del proceso
-    private final int priority; //Nivel de prioridad en el planificador - despachador.
+    private int priority; //Nivel de prioridad en el planificador - despachador.
     private int remProcessing; //Tiempo de procesamiento restante del proceso para finalizar (ramaining processing).
     private long arrivalTime; //Cuando el proceso nace y entra al sistema.
     private long firstEjecutionTime = -1; //-1 indica que aún no ha tocado la CPU.
@@ -62,6 +61,10 @@ public class Process  implements Runnable, Comparable<Process>{
 
     public int getPriority() { //Obtener la prioridad del proceso.
         return priority;
+    }
+
+    public void setPriority(int priority){
+        this.priority = priority;
     }
 
     public int getRemProcessing() {
@@ -118,7 +121,7 @@ public class Process  implements Runnable, Comparable<Process>{
                 Thread.sleep(100); // 100ms por ciclo
             } catch (InterruptedException e) {
                 // Si el planificador interrumpe el hilo (Expropiación/Preemption)
-                this.setActualState(STATE.READY_PROCESS);
+                this.setActualState(STATE.STANDBY_PROCESS);
                 System.out.println("Proceso PID: " + this.pid + " fue interrumpido.");
                 return; // Sale de la CPU
             }

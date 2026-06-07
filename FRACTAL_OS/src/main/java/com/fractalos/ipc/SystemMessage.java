@@ -12,7 +12,8 @@ public class SystemMessage {
         PRINT_TO_CONSOLE,           //Del Kernel/VFS al Shell para imprimir en pantalla.
         SYSTEM_SHUTDOWN_REQUEST,    //Petición de apagado total del sistema.
         PROCESS_LIST_REQUEST,       //Petición de listado de procesos activos.
-        PROCESS_KILL_REQUEST        //Petición para matar un proceso.
+        PROCESS_KILL_REQUEST,       //Petición para matar un proceso.
+        PROCESS_PRIORITY_CHANGE_REQUEST //Petición de cambio de prioridad.
     }
 
     private final Topic topic;     //De qué trata el mensaje.

@@ -41,6 +41,8 @@ public class KernelDaemon implements Runnable {
             listActiveProcesses(msg);
         } else if (msg.getTopic() == SystemMessage.Topic.PROCESS_KILL_REQUEST) {
             killProcess(msg);
+        } else if (msg.getTopic() == SystemMessage.Topic.PROCESS_PRIORITY_CHANGE_REQUEST) {
+            changePriority(msg);
         }
         //...
     }
@@ -48,7 +50,14 @@ public class KernelDaemon implements Runnable {
     //Petición: Crear y encolar un nuevo proceso.
     private void createProcess(SystemMessage msg) {
         String[] tokens = (String[]) msg.getPayload();
-        if (tokens.length < 3) throw new IllegalArgumentException("Faltan argumentos.");
+        if (tokens.length < 3){
+            SystemMessage answer = new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                    "Faltan argumentos test_proc [priority] [remProssesing]."
+            );
+            IPCBus.sendMessageToShell(answer);
+            return;
+        }
 
         int priority = Integer.parseInt(tokens[1]);
         int remProcessing = Integer.parseInt(tokens[2]);
@@ -63,10 +72,11 @@ public class KernelDaemon implements Runnable {
         );
         IPCBus.sendMessageToShell(answer);
 
-        Process nextProcess = Scheduler.getNextProcess();
-        if (nextProcess != null) {
-            Dispatcher.dispatch(nextProcess);
-        }
+        //Process nextProcess = Scheduler.getNextProcess();
+        //if (nextProcess != null) {
+        //    Dispatcher.dispatch(nextProcess);
+        //}
+        evaluateExpropriation(); //Evaluamos la prioridad de los procesos.
     }
 
     //Petición: Limpiar estructuras y apagar el sistema mediante secuencia segura.
@@ -157,6 +167,101 @@ public class KernelDaemon implements Runnable {
             Process procesoSiguiente = Scheduler.getNextProcess();
             if (procesoSiguiente != null) {
                 Dispatcher.dispatch(procesoSiguiente);
+            }
+        }
+    }
+
+    //Petición: Cambiar la prioridad de un proceso activo.
+    private void changePriority(SystemMessage msg){
+        String[] tokens = (String[]) msg.getPayload();
+        int targetPid;
+        int newPriority;
+
+        //Blindaje contra caracteres que no sean números.
+        try {
+            targetPid = Integer.parseInt(tokens[1]);
+            newPriority = Integer.parseInt(tokens[2]);
+        } catch (NumberFormatException e) {
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, "Kernel Error: El PID y la Prioridad deben ser números enteros."
+            ));
+            return;
+        }
+
+        //Buscar en la Tabla Global de Procesos
+        Process p = GPT.get(targetPid);
+        if (p == null) {
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, "Kernel Error: No se encontró proceso con PID [" + targetPid + "]."
+            ));
+            return;
+        }
+
+        //Extraer de la cola.
+        boolean estabaEnCola = Scheduler.deleteProcess(targetPid);
+
+        //Aplicar el cambio de prioridad al PCB.
+        p.setPriority(newPriority);
+
+        //Lógica de re-inserción o notificación.
+        if (estabaEnCola) {
+            Scheduler.addProcess(p);
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                    "Kernel: Prioridad del PID [" + targetPid + "] actualizada a " + newPriority + ". Reordenado en la cola."
+            ));
+        } else {
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                    "Kernel: Prioridad del PID [" + targetPid + "] actualizada a " + newPriority + " (Actualmente en ejecución)."
+            ));
+        }
+        evaluateExpropriation(); //Evaluamos la prioridad de los procesos.
+    }
+
+    //Método de expropiación: Evalúa la prioridad de los procesos que están en Dispatcher, busca los procesos menos
+    //prioritarios y los saca para atender a los más prioritarios.
+    public static void evaluateExpropriation() {
+        //Núcleos libres.
+        if (Dispatcher.getActivePids().size() < 4) {
+            Process next = Scheduler.getNextProcess();
+            if (next != null) {
+                Dispatcher.dispatch(next);
+            }
+            return; //Termina la evaluación.
+        }
+
+        //Si la CPU está llena, seleccionamos el más prioritario.
+        Process best = Scheduler.peekNextProcess();
+        System.out.println("Mejor prioridad: "+ best.getPriority());
+        if (best == null) return; //Cola vacía.
+
+        //Busca el proceso en Dispatcher con menor prioridad.
+        Process weak = null;
+        for (Integer pid : Dispatcher.getActivePids()) {
+            Process pActive = KernelDaemon.GPT.get(pid);
+            if (pActive != null) {
+                if (weak == null || pActive.getPriority() < weak.getPriority()) {
+                    weak = pActive;
+                }
+            }
+        }
+
+        //Se decide quien entra al Dispatcher.
+        if (weak != null && best.getPriority() > weak.getPriority()) {
+            boolean expropriated = Dispatcher.interruptEjecution(weak);
+            if (expropriated) {
+                //Regresamos al débil a la fila de espera del Scheduler.
+                weak.setActualState(Process.STATE.STANDBY_PROCESS);
+                Scheduler.addProcess(weak);
+                //Sacamos al candidato VIP de la fila y lo mandamos al núcleo que se acaba de liberar.
+                Process vip = Scheduler.getNextProcess();
+                Dispatcher.dispatch(vip);
+
+                //IPCBus.sendMessageToShell(new SystemMessage(
+                //        SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                //        "Kernel: [Preemption] PID " + weak.getPid() + " expropiado de la CPU. Entra PID " + vip.getPid()
+                //));
             }
         }
     }
