@@ -130,6 +130,26 @@ public class Shell implements IPCModule, Runnable{
                 esperandoConfirmacionApagado = true;
                 return "ADVERTENCIA: ¿Estás seguro que deseas apagar FRACTAL-OS? (s/n): ";
 
+            case "ps":
+                SystemMessage peticionPS = new SystemMessage(
+                        SystemMessage.Topic.PROCESS_LIST_REQUEST,
+                        0, 0, null
+                );
+                IPCBus.sendMessageToKernel(peticionPS);
+                return "Consultando Tabla Global de Procesos...";
+
+            case "kill":
+                if (tokens.length < 2) {
+                    return "Error: Falta el PID. Uso: kill [PID]";
+                }
+                // Empaquetamos la orden enviando los tokens como payload
+                SystemMessage peticionKill = new SystemMessage(
+                        SystemMessage.Topic.PROCESS_KILL_REQUEST,
+                        0, 0, tokens
+                );
+                IPCBus.sendMessageToKernel(peticionKill);
+                return "Enviando señal SIGKILL al proceso " + tokens[1] + "...";
+
             case "ayuda":
                 return ayudaInfo(tokens);
                 
@@ -154,11 +174,15 @@ public class Shell implements IPCModule, Runnable{
         if (tokens.length == 1){
             return """
                 ayuda -comando
-                clear: Limpiar pantalla 
-                ls: Mostrar directorio 
-                cd: Moverse al directorio 
-                test-proc [arg1] [arg2]: Testear un proceso, prioridad [arg1] rafagas [arg2]
+                clear: Limpiar pantalla. 
+                ls: Mostrar directorio.
+                cd: Moverse al directorio. 
+                test-proc [arg1] [arg2]: Testear un proceso, prioridad [arg1] rafagas [arg2].
                 shutdown: Apagar el sistema de forma segura.
+                ps: Lista todos los procesos vivos encolados.
+                kill [pid]: Mata o fuerza la terminación de un proceso activo.
+                renice [pid] [priority]: Cambia la prioridad de un proceso activo.
+                metrics: Muestra las métricas del rendimiento del kernel.
                 confs: Configuracion de terminal""";
         }
 

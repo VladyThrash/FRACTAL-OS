@@ -1,6 +1,8 @@
 package com.fractalos.kernel;
 import com.fractalos.ipc.IPCBus;
 import com.fractalos.ipc.SystemMessage;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 //El kernel necesita un hilo en segundo plano sin intervención directa (Daemon en terminología UNIX).
 //Para lograr este cometido, esta clase implementa Runnable para ejecutarse como un hilo secundario.
@@ -8,6 +10,7 @@ import com.fractalos.ipc.SystemMessage;
 //definidos en el módulo del kernel.
 
 public class KernelDaemon implements Runnable {
+    public static final Map<Integer, Process> GPT = new ConcurrentHashMap<>(); //Tabla Global de Procesos.
     private int pidCounter = 1; //Generador de Process ID's
 
     @Override
@@ -34,6 +37,10 @@ public class KernelDaemon implements Runnable {
             createProcess(msg);
         } else if (msg.getTopic() == SystemMessage.Topic.SYSTEM_SHUTDOWN_REQUEST) {
             systemShutDown(msg);
+        } else if (msg.getTopic() == SystemMessage.Topic.PROCESS_LIST_REQUEST) {
+            listActiveProcesses(msg);
+        } else if (msg.getTopic() == SystemMessage.Topic.PROCESS_KILL_REQUEST) {
+            killProcess(msg);
         }
         //...
     }
@@ -47,6 +54,7 @@ public class KernelDaemon implements Runnable {
         int remProcessing = Integer.parseInt(tokens[2]);
 
         Process newProcess = new Process(pidCounter++, priority, remProcessing);
+        GPT.put(newProcess.getPid(), newProcess); //Registramos el proceso en la tabla global.
         Scheduler.addProcess(newProcess);
 
         SystemMessage answer = new SystemMessage(
@@ -75,4 +83,82 @@ public class KernelDaemon implements Runnable {
         Dispatcher.shutDown();
         System.exit(0);
     }
+
+    //Petición: Listar todos los procesos activos y regresar la cadena para imprimir en Shell.
+    private void listActiveProcesses(SystemMessage msg) {
+        StringBuilder tabla = new StringBuilder();
+        tabla.append("\n--- TABLA DE PROCESOS (FRACTAL-OS) ---\n");
+        tabla.append(String.format("%-5s | %-10s | %-15s | %-10s\n", "PID", "PRIORIDAD", "ESTADO ACTUAL", "RÁFAGAS"));
+        tabla.append("------------------------------------------------------\n");
+
+        if (GPT.isEmpty()) {
+            tabla.append("No hay procesos activos en el sistema.\n");
+        } else {
+            //Recorremos todos los PCBs registrados.
+            for (Process p : GPT.values()) {
+                tabla.append(String.format("%-5d | %-10d | %-15s | %-10d\n",
+                        p.getPid(),
+                        p.getPriority(),
+                        // Asumiendo que agregaste un getActualState() a Process.java
+                        p.getActualState().toString(),
+                        p.getRemProcessing()
+                ));
+            }
+        }
+        SystemMessage answer = new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, tabla.toString()
+        );
+        IPCBus.sendMessageToShell(answer);
+    }
+
+    //Petición: Matar o eliminar un proceso activo o en ejecución.
+    private void killProcess(SystemMessage msg){
+        String[] tokens = (String[]) msg.getPayload();
+        int targetPid;
+
+        //Blindaje contra caracteres que no sean números.
+        try {
+            targetPid = Integer.parseInt(tokens[1]);
+        } catch (NumberFormatException e) {
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, "Kernel Error: El PID debe ser un número entero."
+            ));
+            return;
+        }
+
+        //Verificamos si el proceso existe en la Tabla Global.
+        Process p = GPT.get(targetPid);
+        if (p == null) {
+            IPCBus.sendMessageToShell(new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, "Kernel Error: No se encontró ningún proceso con PID [" + targetPid + "]."
+            ));
+            return;
+        }
+
+        //Intentar sacarlo del Scheduler o del Dispatcher.
+        boolean estabaEnCola = Scheduler.deleteProcess(targetPid);
+        boolean estabaEnCPU = false;
+        if (!estabaEnCola) {
+            estabaEnCPU = Dispatcher.killProcess(targetPid);
+        }
+
+        //Limpieza absoluta del registro.
+        p.setActualState(Process.STATE.FINISHED_PROCESS);
+        GPT.remove(targetPid);
+
+        //Confirmar al usuario.
+        String estado = estabaEnCola ? "eliminado de la cola." : "aniquilado en la CPU.";
+        IPCBus.sendMessageToShell(new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, "Kernel: Proceso PID [" + targetPid + "] " + estado
+        ));
+
+        //Debemos despachar al siguiente proceso en la cola.
+        if (estabaEnCPU) {
+            Process procesoSiguiente = Scheduler.getNextProcess();
+            if (procesoSiguiente != null) {
+                Dispatcher.dispatch(procesoSiguiente);
+            }
+        }
+    }
+
 }

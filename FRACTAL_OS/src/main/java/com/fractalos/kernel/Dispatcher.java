@@ -77,8 +77,21 @@ public class Dispatcher {
         );
         //IPCBus.sendMessageToMemory(msg);
         IPCBus.sendMessageToShell(msg);
-
         Dispatcher.activeProcesses.remove(p.getPid());
+        KernelDaemon.GPT.remove(p.getPid()); //Removemos de la Tabla Global de Procesos.
+    }
+
+    //Método estático: Mata un proceso forzosamente si se encuentra en ejecución.
+    public static boolean killProcess(int pid) {
+        Future<?> threadControl = activeProcesses.get(pid);
+
+        if (threadControl != null && !threadControl.isDone()) {
+            //Cancel(true) lanza la InterruptedException dentro del while() del proceso.
+            threadControl.cancel(true);
+            activeProcesses.remove(pid);
+            return true; //El proceso fue aniquilado con éxito en la CPU.
+        }
+        return false; //El proceso no estaba en la CPU.
     }
 
    //Método estático: Detiene el Executor Service y limpia el mapa de procesos activos.

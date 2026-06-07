@@ -8,14 +8,11 @@ public class SystemMessage {
     //El catálogo de eventos que el SO puede entender.
     public enum Topic {
         PROCESS_TERMINATED,        //El núcleo avisa que un proceso murió.
-        MEMORY_ALLOCATION_REQUEST, //Petición para asignar páginas.
-        MEMORY_FREE_REQUEST,       //Petición para liberar páginas.
-        VFS_READ_REQUEST,          //Petición para leer archivo.
-        VFS_WRITE_REQUEST,         //Petición para escribir archivo.
-        SHELL_COMMAND_ISSUED,       //El usuario lanzó un comando en la terminal.
         PROCESS_CREATE_REQUEST,     //Del Shell al Kernel.
         PRINT_TO_CONSOLE,           //Del Kernel/VFS al Shell para imprimir en pantalla.
-        SYSTEM_SHUTDOWN_REQUEST     //Petición de apagado total del sistema.
+        SYSTEM_SHUTDOWN_REQUEST,    //Petición de apagado total del sistema.
+        PROCESS_LIST_REQUEST,       //Petición de listado de procesos activos.
+        PROCESS_KILL_REQUEST        //Petición para matar un proceso.
     }
 
     private final Topic topic;     //De qué trata el mensaje.
