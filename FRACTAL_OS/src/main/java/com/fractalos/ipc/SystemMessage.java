@@ -14,7 +14,8 @@ public class SystemMessage {
         VFS_WRITE_REQUEST,         //Petición para escribir archivo.
         SHELL_COMMAND_ISSUED,       //El usuario lanzó un comando en la terminal.
         PROCESS_CREATE_REQUEST,     //Del Shell al Kernel.
-        PRINT_TO_CONSOLE            //Del Kernel/VFS al Shell para imprimir en pantalla.
+        PRINT_TO_CONSOLE,           //Del Kernel/VFS al Shell para imprimir en pantalla.
+        SYSTEM_SHUTDOWN_REQUEST     //Petición de apagado total del sistema.
     }
 
     private final Topic topic;     //De qué trata el mensaje.

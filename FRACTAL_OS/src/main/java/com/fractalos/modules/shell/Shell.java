@@ -20,6 +20,7 @@ public class Shell implements IPCModule, Runnable{
     private String rutaActual = "user@fractal:~$ ";
     private int posicionEntradaUsuario = 0;
     private boolean active = false; //Atributo utilizado por el contrato IPCModule.
+    private boolean esperandoConfirmacionApagado = false;
     
 
     public Shell() {
@@ -97,7 +98,23 @@ public class Shell implements IPCModule, Runnable{
     }
 
     private String procesarTexto(String linea) {
-        String[] tokens = linea.trim().split("\\s+");
+        //Máquina de estados pára confirmación de shutdown.
+        String input = linea.trim().toLowerCase();
+        if (esperandoConfirmacionApagado) {
+            esperandoConfirmacionApagado = false;
+            if (input.equals("s")) {
+                //El usuario confirmó. Mandamos la orden al núcleo.
+                SystemMessage peticion = new SystemMessage(
+                        SystemMessage.Topic.SYSTEM_SHUTDOWN_REQUEST,
+                        0, 0, null
+                );
+                IPCBus.sendMessageToKernel(peticion);
+                return "Iniciando secuencia de apagado... Cerrando módulos.";
+            } else {
+                return "Apagado cancelado.";
+            }
+        }
+        String[] tokens = linea.split(" ");
         String comandoPrincipal = tokens[0].toLowerCase();
 
         switch(comandoPrincipal){
@@ -108,6 +125,10 @@ public class Shell implements IPCModule, Runnable{
                 );
                 IPCBus.sendMessageToKernel(peticion);
                 return "Petición enviada al Kernel...";
+
+            case "shutdown":
+                esperandoConfirmacionApagado = true;
+                return "ADVERTENCIA: ¿Estás seguro que deseas apagar FRACTAL-OS? (s/n): ";
 
             case "ayuda":
                 return ayudaInfo(tokens);
@@ -137,6 +158,7 @@ public class Shell implements IPCModule, Runnable{
                 ls: Mostrar directorio 
                 cd: Moverse al directorio 
                 test-proc [arg1] [arg2]: Testear un proceso, prioridad [arg1] rafagas [arg2]
+                shutdown: Apagar el sistema de forma segura.
                 confs: Configuracion de terminal""";
         }
 

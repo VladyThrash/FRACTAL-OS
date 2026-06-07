@@ -69,7 +69,24 @@ public class BootLoader {
                         IPCBus.sendMessageToShell(respuesta);
                     }
 
-                    //Aquí agregar más if/switch para otros Topic (ej. apagar el sistema)
+                    //Secuencia de apagado del sistema.
+                    if (msg.getTopic() == SystemMessage.Topic.SYSTEM_SHUTDOWN_REQUEST) {
+                        System.out.println("Secuencia de apagado iniciada por el usuario.");
+                        //Mandamos mensaje de cierre a la Shell.
+                        SystemMessage respuesta = new SystemMessage(
+                                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                                "Kernel: Sistema detenido. Puede cerrar la ventana de forma segura."
+                        );
+                        IPCBus.sendMessageToShell(respuesta);
+                        //Le damos tiempo a la interfaz gráfica (Swing) para que pinte el mensaje
+                        //antes de cortar la energía abruptamente.
+                        Thread.sleep(500);
+                        //Ejecutamos tu método de limpieza profunda (Corta el ExecutorService y vacía colas)
+                        Dispatcher.shutDown();
+                        //Detenemos la Máquina Virtual de Java con código 0 (Apagado exitoso)
+                        //Esto cerrará la ventana de Swing y matará todos los hilos restantes al instante.
+                        System.exit(0);
+                    }
                 }
             } catch (InterruptedException e) {
                 System.out.println("Kernel interrumpido. Apagando el sistema...");
