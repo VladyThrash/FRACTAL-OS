@@ -127,6 +127,7 @@ public class Process  implements Runnable, Comparable<Process>{
 
         this.setActualState(STATE.FINISHED_PROCESS);
         System.out.println("Proceso PID: " + this.pid + " finalizó su ráfaga.");
+        Dispatcher.endProcess(this);
     }
 
     //Sobré escribimos el método de la clase funcional Comparable.

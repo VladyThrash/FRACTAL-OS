@@ -70,12 +70,13 @@ public class Dispatcher {
 
         //Notificar mediante IPC liberación de memoria.
         SystemMessage msg = new SystemMessage(
-                SystemMessage.Topic.PROCESS_TERMINATED,
+                SystemMessage.Topic.PRINT_TO_CONSOLE,
                 0,          //sourcePid: 0 indica que el remitente es el Kernel.
                 p.getPid(),          //targetPid: El proceso que acaba de morir.
-                null                 //payload: No necesitamos enviar datos extra en este caso.
+                "Kernel: Proceso PID [" + p.getPid() + "] finalizó su ráfaga."
         );
-        IPCBus.sendMessageToMemory(msg);
+        //IPCBus.sendMessageToMemory(msg);
+        IPCBus.sendMessageToShell(msg);
 
         Dispatcher.activeProcesses.remove(p.getPid());
     }

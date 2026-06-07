@@ -12,6 +12,7 @@ public class IPCBus {
     public static final LinkedBlockingQueue<SystemMessage> memoryMailbox = new LinkedBlockingQueue<>();
     public static final LinkedBlockingQueue<SystemMessage> vfsMailbox = new LinkedBlockingQueue<>();
     public static final LinkedBlockingQueue<SystemMessage> shellMailbox = new LinkedBlockingQueue<>();
+    public static final LinkedBlockingQueue<SystemMessage> kernelMailbox = new LinkedBlockingQueue<>();
 
     //Envía un mensaje al Gestor de Memoria.
     public static void sendMessageToMemory(SystemMessage msg) {
@@ -26,6 +27,11 @@ public class IPCBus {
     //Envía un mensaje a la Terminal (Shell).
     public static void sendMessageToShell(SystemMessage msg) {
         shellMailbox.offer(msg);
+    }
+
+    //Envía un mensaje al Kernel.
+    public static void sendMessageToKernel(SystemMessage msg) {
+        kernelMailbox.offer(msg);
     }
 
     //Limpia todas las colas de mensajes.

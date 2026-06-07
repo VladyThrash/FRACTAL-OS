@@ -10,11 +10,16 @@ import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-public class Shell {
+import com.fractalos.ipc.IPCModule;
+import com.fractalos.ipc.IPCBus;
+import com.fractalos.ipc.SystemMessage;
+
+public class Shell implements IPCModule, Runnable{
     private JFrame ventana;
     private JTextArea areaTrabajo;
-    private String rutaActual = "user@minios:~$ ";
-    private int posicionEntradaUsuario = 0; 
+    private String rutaActual = "user@fractal:~$ ";
+    private int posicionEntradaUsuario = 0;
+    private boolean active = false; //Atributo utilizado por el contrato IPCModule.
     
 
     public Shell() {
@@ -93,9 +98,17 @@ public class Shell {
 
     private String procesarTexto(String linea) {
         String[] tokens = linea.trim().split("\\s+");
-
         String comandoPrincipal = tokens[0].toLowerCase();
+
         switch(comandoPrincipal){
+            case "test-proc":
+                SystemMessage peticion = new SystemMessage(
+                        SystemMessage.Topic.PROCESS_CREATE_REQUEST,
+                        0, 0, tokens //Enviamos los argumentos al Kernel.
+                );
+                IPCBus.sendMessageToKernel(peticion);
+                return "Petición enviada al Kernel...";
+
             case "ayuda":
                 return ayudaInfo(tokens);
                 
@@ -123,6 +136,7 @@ public class Shell {
                 clear: Limpiar pantalla 
                 ls: Mostrar directorio 
                 cd: Moverse al directorio 
+                test-proc [arg1] [arg2]: Testear un proceso, prioridad [arg1] rafagas [arg2]
                 confs: Configuracion de terminal""";
         }
 
@@ -194,5 +208,55 @@ public class Shell {
         //return usuario + rutaActual +"$ ";
         rutaActual = tokens[1] + ":~$ ";
         return "moviendo al directorio: " + tokens[1];
+    }
+
+    //Métodos de comunicación con bus IPC.
+    @Override
+    public String getModuleName() {
+        return "FRACTAL_SHELL";
+    }
+
+    @Override
+    public boolean isActive() {
+        return active;
+    }
+
+    @Override
+    public void shutDownModule() {
+        active = false;
+        ventana.dispose(); //Cierra la ventana de Swing.
+    }
+
+    @Override
+    public void processMessage(SystemMessage msg) {
+        if (msg.getTopic() == SystemMessage.Topic.PRINT_TO_CONSOLE) {
+            String textoAImprimir = (String) msg.getPayload();
+
+            //Usamos invokeLater para delegar la actualización visual al hilo de Swing.
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    areaTrabajo.append("\n" + textoAImprimir + "\n" + rutaActual);
+                    areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
+                    posicionEntradaUsuario = areaTrabajo.getText().length();
+                }
+            });
+        }
+    }
+
+    @Override
+    public void run() {
+        this.active = true;
+        mostrar();
+
+        try {
+            while (active) {
+                //El Shell se queda dormido aquí hasta que alguien le envíe un texto para imprimir.
+                SystemMessage msg = IPCBus.shellMailbox.take();
+                processMessage(msg);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
