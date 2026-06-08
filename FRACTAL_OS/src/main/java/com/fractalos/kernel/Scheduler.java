@@ -1,4 +1,7 @@
 package com.fractalos.kernel;
+import com.fractalos.ipc.IPCBus;
+import com.fractalos.ipc.SystemMessage;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -43,6 +46,16 @@ public class Scheduler {
             Process p = iterator.next();
             if(p.getPid() == pid){
                 iterator.remove();
+
+                //Notificar mediante IPC liberación de memoria.
+                SystemMessage msg = new SystemMessage(
+                        SystemMessage.Topic.MEMORY_FREE_REQUEST,
+                        0,          //sourcePid: 0 indica que el remitente es el Kernel.
+                        p.getPid(),          //targetPid: El proceso que acaba de morir.
+                        null
+                );
+                IPCBus.sendMessageToMemory(msg);
+
                 return true;
             }
         }

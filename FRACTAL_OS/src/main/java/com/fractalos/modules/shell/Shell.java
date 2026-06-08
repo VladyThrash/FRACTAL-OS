@@ -160,6 +160,14 @@ public class Shell implements IPCModule, Runnable{
                 IPCBus.sendMessageToKernel(peticionRenice);
                 return "Solicitando cambio de prioridad para el PID " + tokens[1] + "...";
 
+            case "mem":
+                SystemMessage peticionMapeoMem = new SystemMessage(
+                    SystemMessage.Topic.MEMORY_MAP_REQUEST,
+                    0, 0, tokens
+                );
+                IPCBus.sendMessageToMemory(peticionMapeoMem);
+                return "Consultando mapeo de RAM...";
+
             case "ayuda":
                 return ayudaInfo(tokens);
                 
@@ -187,11 +195,12 @@ public class Shell implements IPCModule, Runnable{
                 clear: Limpiar pantalla. 
                 ls: Mostrar directorio.
                 cd: Moverse al directorio. 
-                test-proc [arg1] [arg2]: Testear un proceso, prioridad [arg1] rafagas [arg2].
+                test-proc [prioridad] [rafagas] [memoria]: Testear un proceso.
                 shutdown: Apagar el sistema de forma segura.
                 ps: Lista todos los procesos vivos encolados.
                 kill [pid]: Mata o fuerza la terminación de un proceso activo.
-                renice [pid] [priority]: Cambia la prioridad de un proceso activo.
+                renice [pid] [prioridad]: Cambia la prioridad de un proceso activo.
+                mem: Mapeo de la memoria RAM.
                 metrics: Muestra las métricas del rendimiento del kernel.
                 confs: Configuracion de terminal""";
         }

@@ -2,6 +2,7 @@ package com.fractalos.boot;
 
 import com.fractalos.modules.shell.Shell;
 import com.fractalos.kernel.KernelDaemon;
+import com.fractalos.modules.memory.MemoryManager;
 
 public class BootLoader {
     public static void main(String args[]) {
@@ -22,10 +23,17 @@ public class BootLoader {
         Thread hiloShell = new Thread(miterminal);
         hiloShell.start();
 
-        //Levantamos el "Demonio" del Kernel.
+        //Levantamos el Demonio del Kernel.
         //Este hilo representa el núcleo del microkernel escuchando el IPCBus.
         KernelDaemon demonio = new KernelDaemon();
         Thread hiloKernel = new Thread(demonio);
         hiloKernel.start();
+
+        //Levantamos el Demonio del Gestor de Memoria.
+        //MemoryManager espera las peticiones del sistema.
+        MemoryManager memory = new MemoryManager();
+        Thread hiloMemoria = new Thread(memory);
+        hiloMemoria.start();
+
     }
 }

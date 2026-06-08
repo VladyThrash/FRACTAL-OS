@@ -50,10 +50,10 @@ public class KernelDaemon implements Runnable {
     //Petición: Crear y encolar un nuevo proceso.
     private void createProcess(SystemMessage msg) {
         String[] tokens = (String[]) msg.getPayload();
-        if (tokens.length < 3){
+        if (tokens.length < 4){
             SystemMessage answer = new SystemMessage(
                     SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
-                    "Faltan argumentos test_proc [priority] [remProssesing]."
+                    "Faltan argumentos: test_proc [prioridad] [refagas] [memoria]."
             );
             IPCBus.sendMessageToShell(answer);
             return;
@@ -72,10 +72,15 @@ public class KernelDaemon implements Runnable {
         );
         IPCBus.sendMessageToShell(answer);
 
-        //Process nextProcess = Scheduler.getNextProcess();
-        //if (nextProcess != null) {
-        //    Dispatcher.dispatch(nextProcess);
-        //}
+        //Solicitamos espacio en RAM.
+        int requestMemory = Integer.parseInt(tokens[3]);
+        int[] dataMemory = {newProcess.getPid(), requestMemory};
+        SystemMessage peticionMemoria = new SystemMessage(
+                SystemMessage.Topic.MEMORY_ALLOCATION_REQUEST,
+                0, 0, dataMemory
+        );
+        IPCBus.sendMessageToMemory(peticionMemoria);
+
         evaluateExpropriation(); //Evaluamos la prioridad de los procesos.
     }
 
@@ -233,7 +238,7 @@ public class KernelDaemon implements Runnable {
 
         //Si la CPU está llena, seleccionamos el más prioritario.
         Process best = Scheduler.peekNextProcess();
-        System.out.println("Mejor prioridad: "+ best.getPriority());
+        //System.out.println("Mejor prioridad: "+ best.getPriority());
         if (best == null) return; //Cola vacía.
 
         //Busca el proceso en Dispatcher con menor prioridad.

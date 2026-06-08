@@ -13,7 +13,10 @@ public class SystemMessage {
         SYSTEM_SHUTDOWN_REQUEST,    //Petición de apagado total del sistema.
         PROCESS_LIST_REQUEST,       //Petición de listado de procesos activos.
         PROCESS_KILL_REQUEST,       //Petición para matar un proceso.
-        PROCESS_PRIORITY_CHANGE_REQUEST //Petición de cambio de prioridad.
+        PROCESS_PRIORITY_CHANGE_REQUEST, //Petición de cambio de prioridad.
+        MEMORY_ALLOCATION_REQUEST,   //Petición para pedir RAM al iniciar un proceso.
+        MEMORY_FREE_REQUEST,        //Petición para liberar RAM.
+        MEMORY_MAP_REQUEST          //Petición para dibujar el mapa de la RAM.
     }
 
     private final Topic topic;     //De qué trata el mensaje.

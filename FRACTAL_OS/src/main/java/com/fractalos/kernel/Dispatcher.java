@@ -69,14 +69,21 @@ public class Dispatcher {
         p.setActualState(Process.STATE.FINISHED_PROCESS);
 
         //Notificar mediante IPC liberación de memoria.
-        SystemMessage msg = new SystemMessage(
+        SystemMessage msg1 = new SystemMessage(
+                SystemMessage.Topic.MEMORY_FREE_REQUEST,
+                0,          //sourcePid: 0 indica que el remitente es el Kernel.
+                p.getPid(),          //targetPid: El proceso que acaba de morir.
+                null
+        );
+        SystemMessage msg2 = new SystemMessage(
                 SystemMessage.Topic.PRINT_TO_CONSOLE,
                 0,          //sourcePid: 0 indica que el remitente es el Kernel.
                 p.getPid(),          //targetPid: El proceso que acaba de morir.
                 "Kernel: Proceso PID [" + p.getPid() + "] finalizó su ráfaga."
         );
-        //IPCBus.sendMessageToMemory(msg);
-        IPCBus.sendMessageToShell(msg);
+
+        IPCBus.sendMessageToMemory(msg1);
+        IPCBus.sendMessageToShell(msg2);
         Dispatcher.activeProcesses.remove(p.getPid());
         KernelDaemon.GPT.remove(p.getPid()); //Removemos de la Tabla Global de Procesos.
         KernelDaemon.evaluateExpropriation(); //Evaluamos la prioridad de los procesos.
@@ -90,6 +97,16 @@ public class Dispatcher {
             //Cancel(true) lanza la InterruptedException dentro del while() del proceso.
             threadControl.cancel(true);
             activeProcesses.remove(pid);
+
+            //Notificar mediante IPC liberación de la memoria.
+            SystemMessage msg = new SystemMessage(
+                    SystemMessage.Topic.MEMORY_FREE_REQUEST,
+                    0,          //sourcePid: 0 indica que el remitente es el Kernel.
+                    pid,          //targetPid: El proceso que acaba de morir.
+                    null
+            );
+            IPCBus.sendMessageToMemory(msg);
+
             return true; //El proceso fue aniquilado con éxito en la CPU.
         }
         return false; //El proceso no estaba en la CPU.
