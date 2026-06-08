@@ -17,7 +17,7 @@ import com.fractalos.ipc.SystemMessage;
 public class Shell implements IPCModule, Runnable{
     private JFrame ventana;
     private JTextArea areaTrabajo;
-    private String rutaActual = "user@fractal:~$ ";
+    private String rutaActual = "user@fractal:root$ ";
     private int posicionEntradaUsuario = 0;
     private boolean active = false; //Atributo utilizado por el contrato IPCModule.
     private boolean esperandoConfirmacionApagado = false;
@@ -175,12 +175,28 @@ public class Shell implements IPCModule, Runnable{
             case "clr":
                 areaTrabajo.setText("");
                 return "";
-                
+
             case "ls":
-                return "Mostrando directorio";
-                
+                SystemMessage peticionLS = new SystemMessage(
+                        SystemMessage.Topic.VFS_LIST_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionLS);
+                return "Listando directorio...";
+
+            case "mkdir":
+                SystemMessage peticionMKDIR = new SystemMessage(
+                        SystemMessage.Topic.VFS_CREATE_DIR_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionMKDIR);
+                return "Creando directorio...";
+
             case "cd":
-                return obtenerRutaActual(tokens);
+                SystemMessage peticionCD = new SystemMessage(
+                        SystemMessage.Topic.VFS_CHANGE_DIR_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionCD);
+                return "";
+                //return obtenerRutaActual(tokens);
                 
             case "confs":
                 return configuracionShell(tokens);
@@ -194,7 +210,8 @@ public class Shell implements IPCModule, Runnable{
                 ayuda -comando
                 clear: Limpiar pantalla. 
                 ls: Mostrar directorio.
-                cd: Moverse al directorio. 
+                cd [dir]: Moverse al directorio. 
+                mkdir [name]: Crear un directorio en la dirección actual.
                 test-proc [prioridad] [rafagas] [memoria]: Testear un proceso.
                 shutdown: Apagar el sistema de forma segura.
                 ps: Lista todos los procesos vivos encolados.
@@ -302,6 +319,18 @@ public class Shell implements IPCModule, Runnable{
                 @Override
                 public void run() {
                     areaTrabajo.append("\n" + textoAImprimir + "\n" + rutaActual);
+                    areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
+                    posicionEntradaUsuario = areaTrabajo.getText().length();
+                }
+            });
+        } else if (msg.getTopic() == SystemMessage.Topic.CHANGE_FILE_PATH) {
+            String nuevaRuta = (String) msg.getPayload();
+
+            javax.swing.SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    rutaActual = nuevaRuta; //Actualizamos la memoria de la Shell.
+                    areaTrabajo.append("\n" + rutaActual);
                     areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
                     posicionEntradaUsuario = areaTrabajo.getText().length();
                 }

@@ -3,6 +3,7 @@ package com.fractalos.boot;
 import com.fractalos.modules.shell.Shell;
 import com.fractalos.kernel.KernelDaemon;
 import com.fractalos.modules.memory.MemoryManager;
+import com.fractalos.modules.vfs.FileSystemManager;
 
 public class BootLoader {
     public static void main(String args[]) {
@@ -35,5 +36,10 @@ public class BootLoader {
         Thread hiloMemoria = new Thread(memory);
         hiloMemoria.start();
 
+        //Levantamos el Demonio del VFS.
+        //FileSystemManager espera las peticiones del sistema.
+        FileSystemManager files = new FileSystemManager();
+        Thread hiloArchivos = new Thread(files);
+        hiloArchivos.start();
     }
 }

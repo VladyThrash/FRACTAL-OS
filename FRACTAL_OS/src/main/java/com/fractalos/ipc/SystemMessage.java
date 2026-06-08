@@ -10,13 +10,18 @@ public class SystemMessage {
         PROCESS_TERMINATED,        //El núcleo avisa que un proceso murió.
         PROCESS_CREATE_REQUEST,     //Del Shell al Kernel.
         PRINT_TO_CONSOLE,           //Del Kernel/VFS al Shell para imprimir en pantalla.
+        CHANGE_FILE_PATH,            //Petición para cambiar el path mostrado en Shell.
         SYSTEM_SHUTDOWN_REQUEST,    //Petición de apagado total del sistema.
         PROCESS_LIST_REQUEST,       //Petición de listado de procesos activos.
         PROCESS_KILL_REQUEST,       //Petición para matar un proceso.
         PROCESS_PRIORITY_CHANGE_REQUEST, //Petición de cambio de prioridad.
         MEMORY_ALLOCATION_REQUEST,   //Petición para pedir RAM al iniciar un proceso.
         MEMORY_FREE_REQUEST,        //Petición para liberar RAM.
-        MEMORY_MAP_REQUEST          //Petición para dibujar el mapa de la RAM.
+        MEMORY_MAP_REQUEST,         //Petición para dibujar el mapa de la RAM.
+        VFS_CREATE_DIR_REQUEST,     //Petición para crear un nuevo directorio.
+        VFS_CREATE_FILE_REQUEST,    //Petición para crear un nuevo archivo.
+        VFS_LIST_REQUEST,           //Petición para listar los archivos del directorio actual.
+        VFS_CHANGE_DIR_REQUEST      //Petición para moverse entre directorios.
     }
 
     private final Topic topic;     //De qué trata el mensaje.
