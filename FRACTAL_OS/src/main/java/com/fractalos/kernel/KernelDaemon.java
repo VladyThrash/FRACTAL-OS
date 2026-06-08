@@ -203,7 +203,7 @@ public class KernelDaemon implements Runnable {
         }
 
         //Extraer de la cola.
-        boolean estabaEnCola = Scheduler.deleteProcess(targetPid);
+        boolean estabaEnCola = Scheduler.expelProcess(targetPid);
 
         //Aplicar el cambio de prioridad al PCB.
         p.setPriority(newPriority);

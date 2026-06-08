@@ -62,6 +62,19 @@ public class Scheduler {
         return false;
     }
 
+    //Método estático: Similar que [deleteProcess(int pid)], pero no manda petición a MemoryManager.
+    public static boolean expelProcess(int pid){
+        Iterator<Process> iterator = Scheduler.queue.iterator();
+        while(iterator.hasNext()){
+            Process p = iterator.next();
+            if(p.getPid() == pid){
+                iterator.remove();
+                return true;
+            }
+        }
+        return false;
+    }
+
     //Método estático: De la cola de prioridad, regresa una lista ordenada de todos los procesos en espera.
     public static List<Process> getAllProcesses(){
         return Scheduler.queue.stream().sorted().collect(Collectors.toList());
