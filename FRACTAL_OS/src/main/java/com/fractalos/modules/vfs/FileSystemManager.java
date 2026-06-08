@@ -47,6 +47,17 @@ public class FileSystemManager implements IPCModule, Runnable {
             case VFS_CHANGE_DIR_REQUEST:
                 changeDir((String[]) msg.getPayload());
                 break;
+            case VFS_CREATE_TEXT_REQUEST:
+                makeTextFile((String[]) msg.getPayload());
+                break;
+            case VFS_CREATE_EXEC_REQUEST:
+                makeExecFile((String[]) msg.getPayload());
+                break;
+            case VFS_READ_FILE_REQUEST:
+                readFile((String[]) msg.getPayload());
+                break;
+            case VFS_EXECUTE_REQUEST:
+                execFile((String[]) msg.getPayload());
             default:
                 break;
         }
@@ -77,7 +88,7 @@ public class FileSystemManager implements IPCModule, Runnable {
             list.append("(Directorio vacío)\n");
         } else {
             for (FileNode nodo : currentDir.getChildren().values()) {
-                if (nodo.isDirectory()) {
+                if (nodo.getType() == FileNode.Type.DIRECTORY) {
                     list.append(String.format("[DIR]  %-15s | %d KB\n", nodo.getName(), nodo.getSizeKB()));
                 } else {
                     list.append(String.format("[FILE] %-15s | %d KB\n", nodo.getName(), nodo.getSizeKB()));
@@ -144,12 +155,131 @@ public class FileSystemManager implements IPCModule, Runnable {
 
         //Lógica para entrar a una carpeta hija.
         FileNode destinyNode = currentDir.getChild(destiny);
-        if (destinyNode != null && destinyNode.isDirectory()) {
+        if (destinyNode != null && destinyNode.getType() == FileNode.Type.DIRECTORY) {
             currentDir = destinyNode;
             sendNewPath(); //Indicamos al Shell un cambio en el path.
         } else {
             sendError("El directorio '" + destiny + "' no existe o no es una carpeta.");
         }
+    }
+
+    //Petición: Crear un nuevo archivo de texto.
+    private void makeTextFile(String[] tokens) {
+        if (tokens.length < 3) {
+            sendError("Uso: nano [nombre] [contenido]");
+            return;
+        }
+        String name = tokens[1];
+        String content = tokens[2];
+
+        //Verificar previa existencia.
+        if (currentDir.getChild(name) != null) {
+            sendError("Ya existe algo llamado '" + name + "'.");
+            return;
+        }
+
+        currentDir.addChild(new FileNode(name, content, currentDir)); //Añadimos como hijo.
+        SystemMessage msg = new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                "VFS: Archivo de texto '" + name + "' guardado."
+        );
+        IPCBus.sendMessageToShell(msg);
+    }
+
+    //Petición: Crear un nuevo archivo ejecutable.
+    private void makeExecFile(String[] tokens) {
+        if (tokens.length < 5) {
+            sendError("Uso: touch [nombre] [prioridad] [rafagas] [memoria_KB]");
+            return;
+        }
+        //Blindaje contra tipos que no sean Integer.
+        try {
+            String name = tokens[1];
+            int prio = Integer.parseInt(tokens[2]);
+            int rfg = Integer.parseInt(tokens[3]);
+            int ram = Integer.parseInt(tokens[4]);
+
+            if (currentDir.getChild(name) != null) {
+                sendError("Ya existe algo llamado '" + name + "'.");
+                return;
+            }
+
+            currentDir.addChild(new FileNode(name, prio, rfg, ram, currentDir)); //Añadimos como hijo.
+            SystemMessage msg = new SystemMessage(
+                    SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                    "VFS: Ejecutable '" + name + "' compilado."
+            );
+            IPCBus.sendMessageToShell(msg);
+        } catch (NumberFormatException e) {
+            sendError("Los parámetros de ejecución deben ser números enteros.");
+        }
+    }
+
+    //Petición: Leer un archivo de texto (mostrar el contenido en la Shell).
+    private void readFile(String[] tokens) {
+        if (tokens.length < 2) {
+            sendError("Uso: open [nombre]"); return;
+        }
+
+        //Verificación de existencia.
+        FileNode node = currentDir.getChild(tokens[1]);
+        if (node == null) {
+            sendError("El archivo no existe.");
+            return;
+        }
+
+        //Verificación de tipo.
+        if (node.getType() != FileNode.Type.TEXT_FILE) {
+            sendError("No se puede abrir. No es un archivo de texto.");
+            return;
+        }
+
+        //Devolvemos el texto a la pantalla.
+        String output = "\n--- Abriendo " + node.getName() + " ---\n" + node.getContent() + "\n--------------------";
+        SystemMessage msg = new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0, output
+        );
+        IPCBus.sendMessageToShell(msg);
+    }
+
+    //Petición: Inicializar el proceso de un archivo ejecutable.
+    private void execFile(String[] tokens) {
+        if (tokens.length < 2) {
+            sendError("Uso: run [nombre_ejecutable]");
+            return;
+        }
+
+        //Verificación de existencia.
+        FileNode node = currentDir.getChild(tokens[1]);
+        if (node == null) {
+            sendError("El archivo no existe.");
+            return;
+        }
+
+        //Verificación de tipo.
+        if (node.getType() != FileNode.Type.EXECUTABLE) {
+            sendError("Permiso denegado. Este archivo no es un programa ejecutable.");
+            return;
+        }
+
+        //Extraemos los metadatos y construimos la petición al Kernel para generar su PCB.
+        String[] toKernel = {
+                "run",
+                String.valueOf(node.getPriority()),
+                String.valueOf(node.getBursts()),
+                String.valueOf(node.getRequiredRamKB())
+        };
+
+        //Mensaje para la Shell.
+        SystemMessage msgShell = new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                "VFS: Cargando proceso '" + node.getName() + "'..."
+        );
+        IPCBus.sendMessageToShell(msgShell);
+
+        //Petición para el kernel.
+        SystemMessage msgKernel = new SystemMessage(SystemMessage.Topic.PROCESS_CREATE_REQUEST, 0, 0, toKernel);
+        IPCBus.sendMessageToKernel(msgKernel);
     }
 
     //Método recursivo para armar la ruta completa escalando hacia el padre.

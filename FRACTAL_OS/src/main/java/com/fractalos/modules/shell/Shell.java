@@ -196,8 +196,41 @@ public class Shell implements IPCModule, Runnable{
                 );
                 IPCBus.sendMessageToVFS(peticionCD);
                 return "";
-                //return obtenerRutaActual(tokens);
-                
+
+            case "touch":
+                SystemMessage peticionTouch = new SystemMessage(
+                        SystemMessage.Topic.VFS_CREATE_EXEC_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionTouch);
+                return "";
+
+            case "open":
+                SystemMessage peticionOpen = new SystemMessage(
+                        SystemMessage.Topic.VFS_READ_FILE_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionOpen);
+                return "";
+
+            case "run":
+                SystemMessage peticionRun = new SystemMessage(
+                        SystemMessage.Topic.VFS_EXECUTE_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionRun);
+                return "";
+
+            case "nano":
+                //Como el contenido del texto tiene espacios, separamos en máximo 3 partes.
+                String[] nanoTokens = linea.split(" ", 3);
+                //Limpiamos las comillas.
+                if(nanoTokens.length == 3) {
+                    nanoTokens[2] = nanoTokens[2].replace("\"", "");
+                }
+                SystemMessage peticionNano = new SystemMessage(
+                        SystemMessage.Topic.VFS_CREATE_TEXT_REQUEST, 0, 0, nanoTokens
+                );
+                IPCBus.sendMessageToVFS(peticionNano);
+                return "";
+
             case "confs":
                 return configuracionShell(tokens);
             default:
@@ -212,6 +245,10 @@ public class Shell implements IPCModule, Runnable{
                 ls: Mostrar directorio.
                 cd [dir]: Moverse al directorio. 
                 mkdir [name]: Crear un directorio en la dirección actual.
+                nano [name][content]: Crear un archivo de texto.
+                open [name]: Leer un archivo de texto.
+                touch [nombre] [prioridad] [rafagas] [memoria_KB]: Crear exec.
+                run [nombre]: Inicializar proceso de un archivo ejecutable.
                 test-proc [prioridad] [rafagas] [memoria]: Testear un proceso.
                 shutdown: Apagar el sistema de forma segura.
                 ps: Lista todos los procesos vivos encolados.
@@ -219,7 +256,8 @@ public class Shell implements IPCModule, Runnable{
                 renice [pid] [prioridad]: Cambia la prioridad de un proceso activo.
                 mem: Mapeo de la memoria RAM.
                 metrics: Muestra las métricas del rendimiento del kernel.
-                confs: Configuracion de terminal""";
+                confs: Configuracion de terminal
+                """;
         }
 
         switch (tokens[1]) {

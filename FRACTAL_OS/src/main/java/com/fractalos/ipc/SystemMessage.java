@@ -19,9 +19,12 @@ public class SystemMessage {
         MEMORY_FREE_REQUEST,        //Petición para liberar RAM.
         MEMORY_MAP_REQUEST,         //Petición para dibujar el mapa de la RAM.
         VFS_CREATE_DIR_REQUEST,     //Petición para crear un nuevo directorio.
-        VFS_CREATE_FILE_REQUEST,    //Petición para crear un nuevo archivo.
         VFS_LIST_REQUEST,           //Petición para listar los archivos del directorio actual.
-        VFS_CHANGE_DIR_REQUEST      //Petición para moverse entre directorios.
+        VFS_CHANGE_DIR_REQUEST,     //Petición para moverse entre directorios.
+        VFS_CREATE_TEXT_REQUEST,    //Petición para crear un nuevo archivo de texto.
+        VFS_CREATE_EXEC_REQUEST,    //Petición para crear un nuevo archivo ejecutable.
+        VFS_READ_FILE_REQUEST,      //Petición para leer un archivo de texto.
+        VFS_EXECUTE_REQUEST         //Petición para arrancar un archivo ejecutable.
     }
 
     private final Topic topic;     //De qué trata el mensaje.
