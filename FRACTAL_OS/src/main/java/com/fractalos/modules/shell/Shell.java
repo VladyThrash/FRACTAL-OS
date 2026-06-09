@@ -17,7 +17,7 @@ import com.fractalos.ipc.SystemMessage;
 public class Shell implements IPCModule, Runnable{
     private JFrame ventana;
     private JTextArea areaTrabajo;
-    private String rutaActual = "user@fractal:root$ ";
+    private String rutaActual = "user@fractal:~$ ";
     private int posicionEntradaUsuario = 0;
     private boolean active = false; //Atributo utilizado por el contrato IPCModule.
     private boolean esperandoConfirmacionApagado = false;

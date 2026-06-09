@@ -1,4 +1,5 @@
 package com.fractalos.modules.vfs;
+import java.io.Serializable;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -7,7 +8,13 @@ import java.util.Map;
 //Cuando creamos un directorio dentro de otro, lo que en realidad se hace es generar una adyacencia jerarquica, donde
 //el directorio superior es padre del directorio que contiene, el directorio hijo es dependiente del directorio padre.
 
-public class FileNode {
+//Implementar Serializable permite congelar objetos y guardarlos como un archivo binario dentro del almacenamiento real del equipo.
+//Cuando el equipo vuelve a arrancar, descongela esos objetos y regresa las instancias donde deberían de ir.
+
+public class FileNode implements Serializable {
+    //Añadir ID para que Java reconozca el archivo al cargarlo.
+    private static final long serialVersionUID = 1L;
+
     public enum Type { //Define si el nodo es un directorio, archivo de texto o ejecutable.
         DIRECTORY,
         TEXT_FILE,

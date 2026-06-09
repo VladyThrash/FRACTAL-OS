@@ -2,6 +2,11 @@ package com.fractalos.modules.vfs;
 import com.fractalos.ipc.IPCModule;
 import com.fractalos.ipc.IPCBus;
 import com.fractalos.ipc.SystemMessage;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
 //Al igual que KernelDaemon y MemoryManager, FileSystemManager es un hilo (Daemon) independiente, por ello implementa Runnable.
 //Contrata IPCModule para recibir y enviar peticiones a otros módulos del sistema. Se simula un sistema de archivos utilizando
@@ -12,10 +17,43 @@ public class FileSystemManager implements IPCModule, Runnable {
     private boolean active = false;
     private final FileNode root; //Nodo raíz.
     private FileNode currentDir; //Puntero al nodo actual.
+    private static final String DISK_FILE = "virtual_disk.fractal"; //Archivo que contiene los objetos generados por VFS.
 
     public FileSystemManager() { //Para hacer la instancia del hilo e inicializar en root.
-        this.root = new FileNode("root", null);
+        this.root = loadDisk(); //Cargamos las instancias VFS desde el disco.
         this.currentDir = root;
+
+        //Cuando el Kernel ejecuta el shutdown, el sistema lanza este hilo que guarda las instancias VFS en el disco.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("VFS: Detectada señal de apagado. Sincronizando disco...");
+            saveDisk();
+        }));
+    }
+
+    //Método: Permite descongelar las instancias generadas por VFS y colocarlas a partir de root.
+    private FileNode loadDisk() {
+        File fileDisk = new File(DISK_FILE);
+        if (fileDisk.exists()) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(fileDisk))) {
+                System.out.println("VFS: Disco virtual montado con éxito.");
+                return (FileNode) ois.readObject(); // Descongelamos el árbol
+            } catch (Exception e) {
+                System.err.println("VFS [ERROR]: Disco corrupto o incompatible. Formateando...");
+            }
+        }
+        //Si es la primera vez que se ejecuta, o hubo error, creamos un root nuevo.
+        System.out.println("VFS: Creando nuevo sistema de archivos limpio.");
+        return new FileNode("root", null);
+    }
+
+    //Método: Permite congelar las instancias generadas por VFS y guardarlas en el disco físico.
+    private void saveDisk() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(DISK_FILE))) {
+            oos.writeObject(this.root); //Congelamos todo el árbol partiendo desde la raíz.
+            System.out.println("VFS: Estado del disco guardado exitosamente.");
+        } catch (Exception e) {
+            System.err.println("VFS [ERROR CRÍTICO]: No se pudo guardar el disco. " + e.getMessage());
+        }
     }
 
     //Implementación del los métodos del contrato IPCModule.
