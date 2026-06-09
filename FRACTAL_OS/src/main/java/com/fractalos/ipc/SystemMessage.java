@@ -24,7 +24,8 @@ public class SystemMessage {
         VFS_CREATE_TEXT_REQUEST,    //Petición para crear un nuevo archivo de texto.
         VFS_CREATE_EXEC_REQUEST,    //Petición para crear un nuevo archivo ejecutable.
         VFS_READ_FILE_REQUEST,      //Petición para leer un archivo de texto.
-        VFS_EXECUTE_REQUEST         //Petición para arrancar un archivo ejecutable.
+        VFS_EXECUTE_REQUEST,        //Petición para arrancar un archivo ejecutable.
+        VFS_DELETE_REQUEST          //Petición para borrar archivos y directorios.
     }
 
     private final Topic topic;     //De qué trata el mensaje.

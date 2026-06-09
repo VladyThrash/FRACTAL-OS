@@ -282,6 +282,13 @@ public class Shell implements IPCModule, Runnable{
                 IPCBus.sendMessageToVFS(peticionNano);
                 return "";
 
+            case "rm":
+                SystemMessage peticionRM = new SystemMessage(
+                        SystemMessage.Topic.VFS_DELETE_REQUEST, 0, 0, tokens
+                );
+                IPCBus.sendMessageToVFS(peticionRM);
+                return "";
+
             case "useradd":
                 if (tokens.length < 3) {
                     return "Uso correcto: useradd [nuevo_usuario] [contraseña]";
@@ -318,13 +325,13 @@ public class Shell implements IPCModule, Runnable{
                 open [name]: Leer un archivo de texto.
                 touch [nombre] [prioridad] [rafagas] [memoria_KB]: Crear exec.
                 run [nombre]: Inicializar proceso de un archivo ejecutable.
+                rm [nombre]: Borrar archivo del directorio actual.
                 test-proc [prioridad] [rafagas] [memoria]: Testear un proceso.
                 shutdown: Apagar el sistema de forma segura.
                 ps: Lista todos los procesos vivos encolados.
                 kill [pid]: Mata o fuerza la terminación de un proceso activo.
                 renice [pid] [prioridad]: Cambia la prioridad de un proceso activo.
                 mem: Mapeo de la memoria RAM.
-                metrics: Muestra las métricas del rendimiento del kernel.
                 useradd [nuevo_usuario] [contraseña]: Añadir un nuevo usuario al sistema.
                 confs: Configuracion de terminal
                 """;

@@ -96,6 +96,10 @@ public class FileSystemManager implements IPCModule, Runnable {
                 break;
             case VFS_EXECUTE_REQUEST:
                 execFile((String[]) msg.getPayload());
+                break;
+            case VFS_DELETE_REQUEST:
+                deleteNode((String[]) msg.getPayload());
+                break;
             default:
                 break;
         }
@@ -318,6 +322,32 @@ public class FileSystemManager implements IPCModule, Runnable {
         //Petición para el kernel.
         SystemMessage msgKernel = new SystemMessage(SystemMessage.Topic.PROCESS_CREATE_REQUEST, 0, 0, toKernel);
         IPCBus.sendMessageToKernel(msgKernel);
+    }
+
+    //Petición: Eliminar un archivo o directorio.
+    private void deleteNode(String[] tokens) {
+        if (tokens.length < 2) {
+            sendError("Uso correcto: rm [nombre]");
+            return;
+        }
+
+        String destinyName = tokens[1];
+        FileNode deadNode = currentDir.getChild(destinyName);
+
+        if (deadNode == null) {
+            sendError("No se encontró el archivo o directorio '" + destinyName + "'.");
+            return;
+        }
+
+        //Ejecutamos la eliminación. El recolector de basura de Java se encargará de
+        //borrarlo de la memoria real al perder la referencia del Map.
+        currentDir.removeChild(destinyName);
+
+        SystemMessage msg = new SystemMessage(
+                SystemMessage.Topic.PRINT_TO_CONSOLE, 0, 0,
+                "VFS: '" + destinyName + "' eliminado exitosamente."
+        );
+        IPCBus.sendMessageToShell(msg);
     }
 
     //Método recursivo para armar la ruta completa escalando hacia el padre.
