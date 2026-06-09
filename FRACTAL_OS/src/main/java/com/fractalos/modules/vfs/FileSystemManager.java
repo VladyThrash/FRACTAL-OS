@@ -331,7 +331,7 @@ public class FileSystemManager implements IPCModule, Runnable {
     //Empaquetar la ruta y enviarla a la Shell.
     private void sendNewPath() {
         String fullPath = builtAbsolutePath(currentDir);
-        String newPrompt = "user@fractal:" + fullPath + "$ ";
+        String newPrompt = "@fractal:" + fullPath + "$ ";
 
         SystemMessage msg = new SystemMessage(
                 SystemMessage.Topic.CHANGE_FILE_PATH,

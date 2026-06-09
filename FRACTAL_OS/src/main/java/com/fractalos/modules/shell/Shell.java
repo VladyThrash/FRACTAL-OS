@@ -14,6 +14,14 @@ import com.fractalos.ipc.IPCModule;
 import com.fractalos.ipc.IPCBus;
 import com.fractalos.ipc.SystemMessage;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.Map;
+import java.util.HashMap;
+
 public class Shell implements IPCModule, Runnable{
     private JFrame ventana;
     private JTextArea areaTrabajo;
@@ -21,7 +29,11 @@ public class Shell implements IPCModule, Runnable{
     private int posicionEntradaUsuario = 0;
     private boolean active = false; //Atributo utilizado por el contrato IPCModule.
     private boolean esperandoConfirmacionApagado = false;
-    
+    private boolean isLoggedIn = false;
+    private int loginStep = 0; // 0 = Pidiendo Usuario, 1 = Pidiendo Password
+    private String tempUser = "";
+    private Map<String, String> shadowData;
+    private static final String SHADOW_FILE = "shadow.fractal";
 
     public Shell() {
         ventana = new JFrame("FracShell");
@@ -29,17 +41,24 @@ public class Shell implements IPCModule, Runnable{
         ventana.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         ventana.setLayout(new BorderLayout());
 
-        
         areaTrabajo = new JTextArea();
         areaTrabajo.setBackground(Color.BLACK);
         areaTrabajo.setForeground(Color.GREEN);
         areaTrabajo.setCaretColor(Color.WHITE);
-        areaTrabajo.setFont(new Font("Consolas", Font.PLAIN, 14));
-        
-        // Iniciamos la terminal con el primer rutaActual impreso
-        areaTrabajo.setText(rutaActual);
-        // Colocamos el cursor al final del rutaActual
-        areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
+        areaTrabajo.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 14));
+
+        //Cargamos la bóveda de usuarios (o creamos los por defecto).
+        this.shadowData = cargarShadow();
+
+        //Hook de apagado: Guarda la bóveda al salir del sistema.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            guardarShadow();
+        }));
+
+        //Cambiamos el estado inicial a modo login e imprimimos el logo.
+        this.rutaActual = "login: ";
+        imprimirPantallaLogin();
+
         posicionEntradaUsuario = areaTrabajo.getText().length();
 
         JScrollPane scroll = new JScrollPane(areaTrabajo);
@@ -67,6 +86,38 @@ public class Shell implements IPCModule, Runnable{
                     if(textoCompleto.length() >= posicionEntradaUsuario){
                         comando = textoCompleto.substring(posicionEntradaUsuario);
                     }
+                    if (!isLoggedIn) {
+                        if (loginStep == 0) { // Validando Usuario
+                            tempUser = comando;
+                            if (tempUser.isEmpty()) {
+                                areaTrabajo.append("\n" + rutaActual);
+                                posicionEntradaUsuario = areaTrabajo.getText().length();
+                                return;
+                            }
+                            rutaActual = "password: ";
+                            loginStep = 1;
+                            areaTrabajo.append("\n" + rutaActual);
+
+                        } else if (loginStep == 1) { // Validando Contraseña
+                            String passwordAttempt = comando;
+                            if (shadowData.containsKey(tempUser) && shadowData.get(tempUser).equals(passwordAttempt)) {
+                                // ¡ACCESO CONCEDIDO!
+                                isLoggedIn = true;
+                                rutaActual = tempUser + "@fractal:~/$ ";
+                                areaTrabajo.append("\n\n[ OK ] Autenticación exitosa.");
+                                areaTrabajo.append("\nBienvenido a FRACTAL-OS.\n\n" + rutaActual);
+                            } else {
+                                // ACCESO DENEGADO
+                                areaTrabajo.append("\n[ ERROR ] Login incorrecto.");
+                                loginStep = 0;
+                                rutaActual = "login: ";
+                                areaTrabajo.append("\n\n" + rutaActual);
+                            }
+                        }
+                        areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
+                        posicionEntradaUsuario = areaTrabajo.getText().length();
+                        return; // Cortamos la ejecución. NUNCA llega a ejecutarComando().
+                    }
                     ejecutarComando(comando);
                     return;
                 }else{
@@ -74,7 +125,7 @@ public class Shell implements IPCModule, Runnable{
                         areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
                     }
                 }
-                
+
             }
         });
     }
@@ -85,7 +136,7 @@ public class Shell implements IPCModule, Runnable{
     }
 
     private void ejecutarComando(String linea) {
-        areaTrabajo.append("\n"); 
+        areaTrabajo.append("\n");
 
         if (!linea.trim().isEmpty()) {
             String respuesta = procesarTexto(linea);
@@ -170,7 +221,7 @@ public class Shell implements IPCModule, Runnable{
 
             case "ayuda":
                 return ayudaInfo(tokens);
-                
+
             case "clear":
             case "clr":
                 areaTrabajo.setText("");
@@ -231,6 +282,24 @@ public class Shell implements IPCModule, Runnable{
                 IPCBus.sendMessageToVFS(peticionNano);
                 return "";
 
+            case "useradd":
+                if (tokens.length < 3) {
+                    return "Uso correcto: useradd [nuevo_usuario] [contraseña]";
+                } else {
+                    if (!tempUser.equals("admin")) {
+                        return "Permiso denegado. Solo el usuario 'admin' puede crear cuentas.";
+                    } else {
+                        String nuevoUsuario = tokens[1];
+                        String nuevaClave = tokens[2];
+                        if (shadowData.containsKey(nuevoUsuario)) {
+                            return "Error: El usuario '" + nuevoUsuario + "' ya existe.";
+                        } else {
+                            shadowData.put(nuevoUsuario, nuevaClave);
+                            return "Usuario '" + nuevoUsuario + "' creado exitosamente.";
+                        }
+                    }
+                }
+
             case "confs":
                 return configuracionShell(tokens);
             default:
@@ -256,6 +325,7 @@ public class Shell implements IPCModule, Runnable{
                 renice [pid] [prioridad]: Cambia la prioridad de un proceso activo.
                 mem: Mapeo de la memoria RAM.
                 metrics: Muestra las métricas del rendimiento del kernel.
+                useradd [nuevo_usuario] [contraseña]: Añadir un nuevo usuario al sistema.
                 confs: Configuracion de terminal
                 """;
         }
@@ -263,10 +333,10 @@ public class Shell implements IPCModule, Runnable{
         switch (tokens[1]) {
             case "ayuda":
                 return "ayuda [comando]";
-                
+
             case "cd":
                 return "cd [directorio] -> Mueve terminal al directorio seleccionado";
-                
+
             case "confs":
                 return """
                     confs -s -numero [tamaño] ->Cambia tamaño de fuente
@@ -280,7 +350,7 @@ public class Shell implements IPCModule, Runnable{
             return "Error: Faltan argumentos consula 'ayuda conf'";
         }
         String bandera = tokens[1].toLowerCase();
-        
+
         switch(bandera){
             case "-s":
                 if(tokens.length <3 ){ return "Error: Debes especificar un tamaño numérico. Ej: confs -fs 16";}
@@ -367,7 +437,7 @@ public class Shell implements IPCModule, Runnable{
             javax.swing.SwingUtilities.invokeLater(new Runnable() {
                 @Override
                 public void run() {
-                    rutaActual = nuevaRuta; //Actualizamos la memoria de la Shell.
+                    rutaActual = tempUser + nuevaRuta; //Actualizamos la memoria de la Shell.
                     areaTrabajo.append("\n" + rutaActual);
                     areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
                     posicionEntradaUsuario = areaTrabajo.getText().length();
@@ -391,4 +461,50 @@ public class Shell implements IPCModule, Runnable{
             Thread.currentThread().interrupt();
         }
     }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> cargarShadow() {
+        File archivoShadow = new File(SHADOW_FILE);
+        if (archivoShadow.exists()) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(archivoShadow))) {
+                return (Map<String, String>) ois.readObject();
+            } catch (Exception e) {
+                System.err.println("Shell [ERROR]: Archivo shadow corrupto. Creando nueva bóveda...");
+            }
+        }
+        Map<String, String> nuevaBoveda = new HashMap<>();
+        nuevaBoveda.put("user", "1234");
+        nuevaBoveda.put("admin", "admin");
+        return nuevaBoveda;
+    }
+
+    private void guardarShadow() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(SHADOW_FILE))) {
+            oos.writeObject(this.shadowData);
+            System.out.println("Shell: Bóveda de credenciales guardada exitosamente.");
+        } catch (Exception e) {
+            System.err.println("Shell [ERROR]: No se pudo guardar el archivo shadow.");
+        }
+    }
+
+    private void imprimirPantallaLogin() {
+        String neofetch =
+                "\n" +
+                        "        ===*===            OS: FRACTAL-OS v1.0\n" +
+                        "      -====*====-          Kernel: Fractal Microkernel\n" +
+                        "    ====:  *  :====        Arch: Java Virtual Machine\n" +
+                        "   :===.   *   .===:       Shell: FracShell\n" +
+                        "  -===     *     ===-      Memory: 1024 KB Paged\n" +
+                        "   :===.   *   .===:       CPU: 4 Virtual Cores\n" +
+                        "    ====:  *  :====        VFS: Persistent Tree\n" +
+                        "      -====*====-          \n" +
+                        "        ===*===            \n" +
+                        "\n" +
+                        rutaActual;
+
+        areaTrabajo.setText(neofetch);
+        areaTrabajo.setCaretPosition(areaTrabajo.getText().length());
+        posicionEntradaUsuario = areaTrabajo.getText().length();
+    }
+
 }
